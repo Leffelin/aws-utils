@@ -1,0 +1,126 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Sets up an S3 bucket ready for hosting of a webpage. Also adds cloudformation in front.",
+  "Resources": {
+    "S3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "IgnorePublicAcls": true,
+          "BlockPublicPolicy": false,
+          "RestrictPublicBuckets": false
+        },
+        "WebsiteConfiguration": {
+          "IndexDocument": "index.html"
+        }
+      }
+    },
+
+    "CloudFrontOriginAccessIdentity": {
+      "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+      "Properties": {
+        "CloudFrontOriginAccessIdentityConfig": {
+          "Comment": "MyOAI"
+        }
+      }
+    },
+
+    "ReadPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "S3Bucket" },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:GetObject",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Sub": [
+                  "arn:aws:s3:::${Bucket}/*",
+                  { "Bucket": { "Ref": "S3Bucket" } }
+                ]
+              },
+              "Principal": {
+                "CanonicalUser": {
+                  "Fn::GetAtt": [
+                    "CloudFrontOriginAccessIdentity",
+                    "S3CanonicalUserId"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    "CloudFrontDistribution": {
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "CustomErrorResponses": [
+            {
+              "ErrorCode": 403,
+              "ResponseCode": 404,
+              "ResponsePagePath": "/error.html"
+            }
+          ],
+
+          "DefaultCacheBehavior": {
+            "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+            "CachedMethods": ["GET", "HEAD", "OPTIONS"],
+            "Compress": true,
+            "DefaultTTL": 3600,
+            "ForwardedValues": {
+              "Cookies": {
+                "Forward": "none"
+              },
+              "QueryString": false
+            },
+            "MaxTTL": 86400,
+            "MinTTL": 60,
+            "TargetOriginId": "s3origin",
+            "ViewerProtocolPolicy": "redirect-to-https"
+          },
+          "DefaultRootObject": "index.html",
+          "Enabled": true,
+          "HttpVersion": "http2",
+          "Origins": [
+            {
+              "DomainName": {
+                "Fn::GetAtt": ["S3Bucket", "DomainName"]
+              },
+              "Id": "s3origin",
+              "S3OriginConfig": {
+                "OriginAccessIdentity": {
+                  "Fn::Sub": "origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}"
+                }
+              }
+            }
+          ],
+          "PriceClass": "PriceClass_100"
+        }
+      }
+    }
+  },
+
+  "Outputs": {
+    "BucketName": {
+      "Description": "The S3 Bucket Name",
+      "Value": {
+        "Ref": "S3Bucket"
+      }
+    },
+    "DistributionId": {
+      "Description": "The CloudFront Distribution id",
+      "Value": { "Ref": "CloudFrontDistribution" }
+    },
+    "Domain": {
+      "Description": "Webpage Domain",
+      "Value": {
+        "Fn::GetAtt": ["CloudFrontDistribution", "DomainName"]
+      }
+    }
+  }
+}
