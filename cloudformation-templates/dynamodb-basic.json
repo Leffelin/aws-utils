@@ -1,0 +1,194 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Creates a table in amazon dynamodb.",
+
+  "Parameters": {
+    "TableName": {
+      "Description": "Name of the DynamoDB Table",
+      "Type": "String",
+      "AllowedPattern": "[a-zA-Z0-9]*",
+      "MinLength": 3,
+      "MaxLength": 2048,
+      "ConstraintDescription": "must contain only alphanumberic characters"
+    },
+    "PrimaryKey": {
+      "Description": "Name of the PrimaryKey",
+      "Type": "String",
+      "AllowedPattern": "[a-zA-Z0-9]*",
+      "Default": "id",
+      "MinLength": 1,
+      "MaxLength": 2048,
+      "ConstraintDescription": "must contain only alphanumberic characters"
+    },
+    "PrimaryKeyType": {
+      "Description": "Type of the PrimaryKey - S for String or N for Number.",
+      "Type": "String",
+      "AllowedValues": ["S", "N"],
+      "Default": "S",
+      "MinLength": 1,
+      "MaxLength": 1,
+      "ConstraintDescription": "must be either S or N"
+    },
+    "SortingKey": {
+      "Description": "Name of the SortingKey",
+      "Type": "String",
+      "AllowedPattern": "[a-zA-Z0-9]*",
+      "MinLength": 0,
+      "MaxLength": 2048,
+      "ConstraintDescription": "must contain only alphanumberic characters"
+    },
+    "SortingKeyType": {
+      "Description": "Type of the SortingKey - S for String or N for Number.",
+      "Type": "String",
+      "AllowedValues": ["S", "N"],
+      "Default": "S",
+      "MinLength": 1,
+      "MaxLength": 1,
+      "ConstraintDescription": "must be either S or N"
+    },
+    "ReadCapacityUnits": {
+      "Description": "Provisioned read throughput. (Set 0 for on-demand).",
+      "Type": "Number",
+      "Default": 1,
+      "MinValue": 0,
+      "MaxValue": 10000,
+      "ConstraintDescription": "must be between 5 and 10000"
+    },
+    "WriteCapacityUnits": {
+      "Description": "Provisioned write throughput. (Set 0 for on-demand).",
+      "Type": "Number",
+      "Default": 1,
+      "MinValue": 0,
+      "MaxValue": 10000,
+      "ConstraintDescription": "must be between 5 and 10000"
+    }
+  },
+
+  "Conditions": {
+    "HasSortingKey": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [{ "Ref": "SortingKey" }, ""]
+        }
+      ]
+    }
+  },
+
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": { "default": "Table Name" },
+          "Parameters": ["TableName"]
+        },
+        {
+          "Label": { "default": "Primary Key Configuration" },
+          "Parameters": ["PrimaryKey", "PrimaryKeyType"]
+        },
+        {
+          "Label": { "default": "Sorting Key Configuration - Optional" },
+          "Parameters": ["SortingKey", "SortingKeyType"]
+        }
+      ],
+      "ParameterLabels": {
+        "TableName": { "default": "Choose a name for the new DynamoDB table" },
+        "SortingKey": {
+          "default": "SortingKey - Optional (Leave blank to not use)"
+        }
+      }
+    }
+  },
+
+  "Resources": {
+    "DynamoDBTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": {
+          "Ref": "TableName"
+        },
+        "AttributeDefinitions": {
+          "Fn::If": [
+            "HasSortingKey",
+            [
+              {
+                "AttributeName": {
+                  "Ref": "PrimaryKey"
+                },
+                "AttributeType": {
+                  "Ref": "PrimaryKeyType"
+                }
+              },
+              {
+                "AttributeName": {
+                  "Ref": "SortingKey"
+                },
+                "AttributeType": {
+                  "Ref": "SortingKeyType"
+                }
+              }
+            ],
+            [
+              {
+                "AttributeName": {
+                  "Ref": "PrimaryKey"
+                },
+                "AttributeType": {
+                  "Ref": "PrimaryKeyType"
+                }
+              }
+            ]
+          ]
+        },
+        "KeySchema": {
+          "Fn::If": [
+            "HasSortingKey",
+            [
+              {
+                "AttributeName": {
+                  "Ref": "PrimaryKey"
+                },
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": {
+                  "Ref": "SortingKey"
+                },
+                "KeyType": "RANGE"
+              }
+            ],
+            [
+              {
+                "AttributeName": {
+                  "Ref": "PrimaryKey"
+                },
+                "KeyType": "HASH"
+              }
+            ]
+          ]
+        },
+        "BillingMode": "PROVISIONED",
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": {
+            "Ref": "ReadCapacityUnits"
+          },
+          "WriteCapacityUnits": {
+            "Ref": "WriteCapacityUnits"
+          }
+        }
+      }
+    }
+  },
+
+  "Outputs": {
+    "Name": {
+      "Value": {
+        "Ref": "TableName"
+      },
+      "Description": "The name of the created table"
+    },
+    "Arn": {
+      "Value": { "Fn::GetAtt": ["DynamoDBTable", "Arn"] },
+      "Description": "The Arn of the created table"
+    }
+  }
+}
