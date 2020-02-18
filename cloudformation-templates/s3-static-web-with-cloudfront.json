@@ -61,7 +61,8 @@
         "Comment": [
           "When the S3 bucket is created at the same time as the Cloudfront distribution,",
           "it can take up to 24h before Cloudfront behaves as intended.",
-          "Until the new S3 bucket name has propagated to all regions, Cloudfront will redirect to the S3 website url and not have access.",
+          "Until the new S3 bucket name has propagated to all regions,",
+          "Cloudfront will redirect to the S3 website url and not have access.",
           "(See https://aws.amazon.com/premiumsupport/knowledge-center/s3-http-307-response/)"
         ]
       },
