@@ -10,9 +10,6 @@
           "IgnorePublicAcls": true,
           "BlockPublicPolicy": false,
           "RestrictPublicBuckets": false
-        },
-        "WebsiteConfiguration": {
-          "IndexDocument": "index.html"
         }
       }
     },
